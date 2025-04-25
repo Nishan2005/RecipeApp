@@ -1,160 +1,341 @@
-// src/pages/Login.jsx
+import { useState } from "react";
+import axios from "axios"; // You'll need to install axios: npm install axios
+import authImage from '../assets/Untitled.png';
+import { form } from "framer-motion/client";
+
 function Login() {
-    return (
-      <div className="min-h-screen bg-teal-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl overflow-hidden">
-        <div className="flex flex-col md:flex-row">
-          {/* Left side with illustration */}
-          <div className="w-full md:w-1/2 bg-sky-50 p-8 flex items-center justify-center">
-            <div className="relative">
-              {/* Decorative dots */}
-              <div className="absolute -top-12 -left-12 w-6 h-6 rounded-full border-2 border-dotted border-teal-400"></div>
-              <div className="absolute top-10 -right-16 w-6 h-6 rounded-full border-2 border-dotted border-teal-400"></div>
-              <div className="absolute -bottom-8 left-20 w-6 h-6 rounded-full border-2 border-dotted border-teal-400"></div>
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+    Type: 1
+  });
+
+  const [validationErrors, setValidationErrors] = useState({
+    email: "",
+    password: ""
+  });
+  
+  // Loading and error states
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  // Handle input changes
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) return "Email is required";
+    if (!emailRegex.test(email)) return "Email must contain '@' and '.'";
+    return "";
+  };
+
+  // Password validation function
+  const validatePassword = (password) => {
+    if (!password) return "Password is required";
+    if (password.length < 6) return "Password must be at least 6 characters long";
+    return "";
+  };
+
+  // Handle input changes with validation
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+
+    // Validate on change
+    if (name === "email") {
+      setValidationErrors({
+        ...validationErrors,
+        email: validateEmail(value)
+      });
+    } else if (name === "password") {
+      setValidationErrors({
+        ...validationErrors,
+        password: validatePassword(value)
+      });
+    }
+  };
+
+  // Validate the entire form
+  const validateForm = () => {
+    const emailError = validateEmail(formData.email);
+    const passwordError = validatePassword(formData.password);
+    
+    setValidationErrors({
+      email: emailError,
+      password: passwordError
+    });
+    
+    return !emailError && !passwordError;
+  };
+
+  // Handle login submission
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+  
+    try {
+      const response = await axios.post("https://localhost:7043/api/Users/Login", {
+        email: formData.email,
+        password: formData.password
+      });
+  
+      const jwtToken = response.data.token;
+      localStorage.setItem("token", jwtToken);
+  
+      // Fetch and store user profile
+      await fetchUserProfile(jwtToken);
+  
+      setSuccessMessage("Login successful! Redirecting...");
+      setTimeout(() => {
+        window.location.href = "/home";
+      }, 1500);
+  
+    } catch (err) {
+      setError(err.response?.data?.message || "Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchUserProfile = async (token) => {
+    try {
+      const response = await axios.get("https://localhost:7043/api/Users/UserProfile", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      console.log(response.data.name); // Log user name
+      localStorage.setItem("user", JSON.stringify(response.data));
+    } catch (err) {
+      console.error("Failed to fetch user profile:", err);
+      setError("Failed to fetch user profile.");
+    }
+  };
+  
+  // Handle signup submission
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Replace with your actual API endpoint
+      const response = await axios.post("https://localhost:7043/api/Users/Register", {
+        fullName: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        type: formData.Type
+      });
+      
+      // Set success message
+      setSuccessMessage("Account created successfully! Please login.");
+      
+      // Switch to login form after successful signup
+      setTimeout(() => {
+        setIsSignUp(false);
+        setFormData({
+          ...formData,
+          fullName: ""
+        });
+      }, 1500);
+      
+    } catch (err) {
+      setError(err.response?.data?.message || "Signup failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <section className="min-h-screen flex justify-center items-center overflow-hidden">
+      <div className="relative bg-yellow-200 rounded-2xl max-w-3xl p-5 w-full md:w-4/5 lg:w-4/5 h-auto md:h-[500px] overflow-hidden">
+        {/* Container for both the forms and image that will swap */}
+        <div className={`flex flex-col md:flex-row w-full h-full transition-all duration-700 ${isSignUp ? "md:-translate-x-1/2" : ""}`}>
+          {/* Left Side */}
+          <div className="md:min-w-1/2 h-full flex flex-col justify-center">
+            {/* Login Form */}
+            <div className="p-8">
+              <h2 className="font-bold text-3xl text-amber-900">Login</h2>
+              <p className="text-sm mt-4 text-amber-900">
+                If you are already a member, log in now.
+              </p>
               
-              {/* Main illustration */}
-              <div className="relative">
-                <div className="bg-blue-300 h-32 w-64 rounded-tr-3xl rounded-tl-md"></div>
-                <div className="absolute bottom-0 left-0 right-0">
-                  <div className="flex items-end">
-                    {/* Person with yellow shirt */}
-                    <div className="relative mb-2">
-                      <div className="w-12 h-12 bg-yellow-400 rounded-full"></div>
-                      <div className="w-10 h-16 bg-yellow-400 absolute -bottom-16 left-1"></div>
-                      <div className="w-3 h-12 bg-indigo-900 absolute -bottom-28 left-1"></div>
-                      <div className="w-3 h-12 bg-indigo-900 absolute -bottom-28 left-8"></div>
-                      <div className="w-6 h-4 bg-red-400 absolute -bottom-16 -right-3"></div>
-                    </div>
-                    
-                    {/* Desk */}
-                    <div className="relative z-10 w-60 h-1 bg-blue-500"></div>
-                    
-                    {/* Person with purple hair */}
-                    <div className="relative mb-2 ml-10">
-                      <div className="w-10 h-10 bg-indigo-700 rounded-full"></div>
-                      <div className="w-10 h-14 bg-pink-200 absolute -bottom-14 left-0"></div>
-                    </div>
-                  </div>
+              {error && !isSignUp && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mt-4">
+                  {error}
                 </div>
-                
-                {/* Plant */}
-                <div className="absolute bottom-0 right-2">
-                  <div className="w-8 h-16 bg-blue-400 rounded-tl-full rounded-tr-full"></div>
-                  <div className="w-4 h-8 bg-yellow-600 rounded-md mx-auto -mt-1"></div>
+              )}
+              
+              {successMessage && !isSignUp && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mt-4">
+                  {successMessage}
                 </div>
+              )}
+              
+              <form className="flex flex-col gap-4" onSubmit={handleLogin}>
+                <input 
+                  className="p-2 mt-8 rounded-xl border" 
+                  type="email" 
+                  name="email"
+                  placeholder="Email" 
+                  value={formData.email}
+                  onChange={handleChange}
+                  required 
+                />
+                <div className="relative">
+                  <input
+                    className="p-2 rounded-xl border w-full"
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer "
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
+                <button 
+                  className="bg-amber-700 text-white py-2 rounded-xl hover:scale-105 duration-300 hover:bg-amber-600 font-medium flex justify-center" 
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading && !isSignUp ? "Logging in..." : "Login"}
+                </button>
+              </form>
+
+              <div className="mt-4 text-sm flex justify-between items-center">
+                <p>Don't have an account?</p>
+                <button
+                  className="bg-amber-700 text-white py-2 px-5 rounded-xl hover:scale-110 hover:bg-amber-600 font-semibold duration-300"
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  type="button"
+                >
+                  Register
+                </button>
               </div>
             </div>
           </div>
-          
-          {/* Right side with login form */}
-          <div className="w-full md:w-1/2 p-8">
-            <div className="mb-8">
-              <img src="/api/placeholder/150/30" alt="Ghostlamp Logo" className="h-8" />
-            </div>
-            
-            <div className="mb-8">
-              <h1 className="text-3xl font-medium text-gray-800">Welcome Back :)</h1>
-              <p className="text-sm text-gray-600 mt-2">
-                To keep connected with us please login with your personal information by email address and password
-                <span className="inline-block ml-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </span>
+
+          {/* Middle - Image Section */}
+          <div className="min-w-[50%] h-full">
+            <img
+              className="w-full h-full object-cover rounded-xl"
+              src={authImage}
+              //src="https://images.unsplash.com/photo-1552010099-5dc86fcfaa38?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NzEyNjZ8MHwxfHNlYXJjaHwxfHxmcmVzaHxlbnwwfDF8fHwxNzEyMTU4MDk0fDA&ixlib=rb-4.0.3&q=80&w=1080"
+              alt="Auth"
+            />
+          </div>
+
+          {/* Right Side - Sign Up Form (will slide into view) */}
+          <div className="md:min-w-1/2 h-full flex flex-col justify-center">
+            <div className="p-8">
+              <h2 className="font-bold text-3xl text-amber-900">Sign Up</h2>
+              <p className="text-sm mt-4 text-amber-900">
+                Create an account to get started.
               </p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="relative">
-                <div className="flex items-center border rounded-md px-3 py-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
-                  <span className="text-gray-500 mr-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </span>
-                  <input
-                    type="email"
-                    className="flex-1 outline-none text-sm"
-                    placeholder="Email Address"
-                    value="Justin@ghostlamp.io"
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                  <span className="text-green-500 ml-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </span>
+              
+              {error && isSignUp && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mt-4">
+                  {error}
                 </div>
-              </div>
+              )}
               
-              <div className="relative">
-                <div className="flex items-center border rounded-md px-3 py-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
-                  <span className="text-gray-500 mr-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </span>
-                  <input
-                    type="password"
-                    className="flex-1 outline-none text-sm"
-                    placeholder="Password"
-                    value="••••••••"
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+              {successMessage && isSignUp && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mt-4">
+                  {successMessage}
                 </div>
+              )}
+              
+              <form className="flex flex-col gap-4" onSubmit={handleSignUp}>
+                <input 
+                  className="p-2 mt-8 rounded-xl border" 
+                  type="text" 
+                  name="fullName"
+                  placeholder="Full Name" 
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  required 
+                />
+                <input 
+                  className="p-2 rounded-xl border" 
+                  type="email" 
+                  name="email"
+                  placeholder="Email" 
+                  value={formData.email}
+                  onChange={handleChange}
+                  required 
+                />
+                <input 
+                  className="p-2 rounded-xl border" 
+                  type="password" 
+                  name="password"
+                  placeholder="Password" 
+                  value={formData.password}
+                  onChange={handleChange}
+                  required 
+                />
+                <select 
+  className="p-2 rounded-xl border" 
+  name="Type"
+  value={formData.Type}
+  onChange={handleChange}
+  required
+>
+  <option value={1}>FoodLover</option>
+  <option value={2}>Chef</option>
+</select>
+
+                <button 
+                  className="bg-amber-700 text-white py-2 rounded-xl hover:scale-105 duration-300 hover:bg-amber-600 font-medium flex justify-center" 
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading && isSignUp ? "Signing up..." : "Sign Up"}
+                </button>
+              </form>
+
+              <div className="mt-4 text-sm flex justify-between items-center">
+                <p>Already have an account?</p>
+                <button
+                  className="bg-amber-700 text-white py-2 px-5 rounded-xl hover:scale-110 hover:bg-amber-600 font-semibold duration-300"
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  type="button"
+                >
+                  Login
+                </button>
               </div>
-              
-              {/* <div className="flex items-center justify-between">
-                <label className="flex items-center space-x-2 text-sm cursor-pointer">
-                  <div className="relative flex items-center">
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                    />
-                    <div className={`w-5 h-5 border rounded-sm ${rememberMe ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
-                      {rememberMe && (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mx-auto text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-gray-700">Remember Me</span>
-                </label>
-                <a href="#" className="text-sm text-gray-600 hover:underline">Forgot Password?</a>
-              </div> */}
-              
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                <button className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition duration-200">
-                  Login Now
-                </button>
-                <button className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-50 transition duration-200">
-                  Create Account
-                </button>
-              </div>
-              
-              <div className="relative flex items-center justify-center mt-6">
-                <div className="absolute border-t border-gray-300 w-full"></div>
-                <span className="relative bg-white px-3 text-sm text-gray-500">Or you can join with</span>
-              </div>
-              
-              {/* <div className="flex justify-center space-x-4 mt-4">
-                <button className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition duration-200">
-                  <Google size={20} className="text-gray-600" />
-                </button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 transition duration-200">
-                  <Facebook size={20} className="text-white" />
-                </button>
-                <button className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-400 hover:bg-blue-500 transition duration-200">
-                  <Twitter size={20} className="text-white" />
-                </button>
-              </div> */}
             </div>
           </div>
         </div>
       </div>
-    </div>
-    );
-  }
-  
-  export default Login;
+    </section>
+  );
+}
+
+export default Login;
